@@ -1,0 +1,92 @@
+Utiliser Vue.js Selon la version de PrestaShop exécutée sur la boutique, que ce
+soit en back ou en front-office, au moins un modèle de rendu est disponible pour
+afficher le contenu sur la page. Avec Javascript, il est possible de mettre à
+jour et d'animer le contenu de la page sans avoir à rafraîchir la page. jQuery
+est disponible sur PrestaShop pour faciliter la mise en œuvre de ces mises à
+jour d'interface. Pour les interfaces complexes, avec la gestion d'état par
+exemple, d'autres options de frontend pourraient être envisagées. Vue.jsest un
+framework JavaScript qui sera utile dans ce cas. Ce chapitre traite de son
+intégration sur un module. FAQ sur Vue.js 1- Création d'une application Vue.js
+dans les répertoires des modules L'objectif de cette partie est de rendre Vue.js
+disponible dans le projet. Nous allons stocker le code source de Vue.js dans un
+dossier dédié qui sera présent dans le module uniquement lors de la partie
+développement. L'exécution de Vue.js sera possible en compilant et en stockant
+les fichiers JS dans le dossier d'actifs approprié. Au cours de ce tutoriel,
+nous utilisons un nouveau dossier _devqui sera créé à la racine du répertoire du
+module. L'installation de Vue.js peut être effectuée via plusieurs façons, mais
+nous utiliserons l'option CLI pour obtenir toute la pile. Installation de
+l'outil CLI Vue.js (globalement) $ npm install -g @vue/cli Création du projet $
+vue create _dev Nous avons choisi le préréglage avec Vue 2 & Babel pour ce
+tutoriel. Après le processus d'initialisation avec quelques questions et
+téléchargements, une application autonome complète sera créée et disponible dans
+le _devdossier. Les commandes npm en cours d'exécution sont définies dans le
+package.json fichier pour l'exécuter ou le générer. $ cd _dev $ npm run build
+Pour le moment, nous avons une application Vue.js qui peut s'exécuter
+indépendamment du module. Dans les prochaines parties, cette application
+autonome sera adaptée pour s'exécuter dans une page PrestaShop. 2- Nettoyage
+Supposons que l'espace de travail Vue.js soit le _devdossier : Supprimez le
+_dev/public/dossier. Dans le _dev/package.jsondossier, supprimez le servescript.
+3- Personnalisation de l'application pour un contexte PrestaShop Dans la
+structure des modules, les fichiers JavaScript doivent être stockés au format
+views/js/. Nous demanderons au compilateur d'y écrire les fichiers
+distribuables. Créez ou modifiez _dev/vue.config.jsavec : const path =
+require('path'); module.exports = { chainWebpack: (config) => { // Stop
+generating the HTML page config.plugins.delete('html');
+config.plugins.delete('preload'); config.plugins.delete('prefetch'); // Allow
+resolving images in the subfolder src/assets/ config.resolve.alias.set('@',
+path.resolve(__dirname, 'src')); }, css: { extract: false, }, runtimeCompiler:
+true, productionSourceMap: false, filenameHashing: false, // These rules allow
+the files to be compiled and stored in the proper folder outputDir: '../views/',
+assetsDir: '', // ⚠️ Change this line with your module name publicPath:
+'../modules/<module_name
+  >/views/', }; Cette configuration supprimera tous les fichiers présents dans
+  le views/js/dossier. Avant d'aller plus loin, assurez-vous : il n'y a aucun
+  fichier existant qui serait perdu, ou pour écrire vos fichiers générés dans un
+  sous-dossier supplémentaire à l'intérieur views/js/en modifiant outputDir&
+  publicPath. Ensuite, les scripts disponibles dans le package.json peuvent être
+  remplacés par ceux-ci : modules/[nom_module]/_dev/package.json "build":
+  "vue-cli-service build --no-clean", "lint": "vue-cli-service lint --fix",
+  "dev": "vue-cli-service build --no-clean --mode development --watch", Le
+  nouveau devscript permet de compiler les fichiers JS et de surveiller tout
+  changement qui se produirait dans les répertoires du projet. Chaque fois qu'un
+  fichier est enregistré, la compilation s'exécute à nouveau immédiatement.
+  Tester la compilation des fichiers se fait avec : $ npm run dev Après un
+  certain temps, une sortie similaire devrait apparaître sur le terminal une
+  fois terminé : $ npm run dev [...] DONE Compiled successfully in 2679ms
+  19:17:27 File Size Gzipped ../views/js/chunk-vendors.js 121.79 KiB 44.16 KiB
+  ../views/js/app.js 5.41 KiB 1.94 KiB Images and other types of assets omitted.
+  DONE Build complete. The ../views directory is ready to be deployed. INFO
+  Check out deployment instructions at
+  https://cli.vuejs.org/guide/deployment.html 4- Affichage de l'application
+  L'application est maintenant prête à être intégrée dans une page de
+  PrestaShop. Il y a plusieurs étapes à compléter : Ajouter un div avec l'ID
+  approprié dans un modèle modules/[nom_module]/views/templates/admin/app.tpl
+
+  <link href="{$pathApp|escape:'htmlall':'UTF-8'}" rel="preload" as="script" />
+
+  <div id="app"></div>
+  <script src="{$chunkVendor|escape:'htmlall':'UTF-8'}"></script>
+  <script src="{$pathApp|escape:'htmlall':'UTF-8'}"></script>
+  Bien que cela ne soit pas recommandé, cet exemple ajoute le fichier JS à
+  l'intérieur du modèle afin que l'exemple reste court. Vous devriez utiliser
+  registerJavascript()lorsque cela est possible. Affichage du contenu du modèle
+  Pour une application intégrée dans un AdminModuleController: public function
+  initContent() { $this->context->smarty->assign([ 'pathApp' =>
+  $this->module->getPathUri() . 'views/js/app.js', 'chunkVendor' =>
+  $this->module->getPathUri() . 'views/js/chunk-vendors.js', ]); $this->content
+  =
+  $this->context->smarty->fetch('module:modulename//views/templates/admin/app.tpl');
+  parent::initContent(); } Soit pour une application intégrée dans la classe
+  principale du module (c'est-à-dire dans la méthode getContent()) :
+  modules/[nom_module]/[nom_module].php public function getContent() {
+  $this->context->smarty->assign([ 'pathApp' => $this->getPathUri() .
+  'views/js/app.js', 'chunkVendor' => $this->getPathUri() .
+  'views/js/chunk-vendors.js', ]); return
+  $this->context->smarty->fetch('module:modulename/views/templates/admin/app.tpl');
+  } Si l'intégration se passe bien, la page devrait afficher l'écran d'accueil
+  de Vue.js : Page de configuration du module avec page d'accueil de Vue.js
+  L'application est maintenant en cours d'exécution et prête à être modifiée
+  avec les fonctionnalités du module. Les prochaines étapes peuvent être
+  réalisées en s'appuyant sur les Documentation Vue.js ou le site Web de toute
+  dépendance JS qui sera ajoutée au projet.</module_name
+>
