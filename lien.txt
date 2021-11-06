@@ -1,0 +1,3 @@
+https://www.prestashop.com/forums/topic/999861-writing-a-module-in-vue/
+
+https://belvg.com/blog/vue-js-on-prestashop-1-7-admin-panel.html
